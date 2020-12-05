@@ -1,0 +1,12 @@
+int x;
+
+main {
+  int x;
+  pointer<int> y;
+  pointer<int> arr;
+  char c;
+  arr = (pointer<int>) malloc(50);
+  y = &x;
+  c = 't';
+  return 0;
+}
