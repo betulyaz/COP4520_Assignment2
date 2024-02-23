@@ -128,7 +128,7 @@ argument_list_opt
   ;
 
 argument_list
-  : expression { $$ = $1; }
+  : expression { $$ = create_exprlist($1, NULL); }
   | expression ',' argument_list { $$ = create_exprlist($1, $3); }
   ;
 
@@ -140,7 +140,7 @@ unary_expression
 
 unary_operator
   : '&' { $$ = E_op_ref; }
-  | '*' { $$ = E_op_times; }
+  | '*' { $$ = E_op_deref; }
   | '-' { $$ = E_op_minus; }
   | '!' { $$ = E_op_not; }
   ;
@@ -215,7 +215,7 @@ type_list_opt
   ;
 
 type_list
-  : type { $$ = $1; }
+  : type { $$ = create_typelist($1, NULL); }
   | type ',' type_list { $$ = create_typelist($1, $3); }
   ;
 
@@ -238,7 +238,7 @@ parameter_list_opt
   ;
 
 parameter_list
-  : IDENTIFIER { $$ = $1; }
+  : IDENTIFIER { $$ = create_paramlist($1, NULL); }
   | IDENTIFIER ',' parameter_list { $$ = create_paramlist($1, $3); }
   ;
 

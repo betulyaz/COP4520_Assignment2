@@ -11,7 +11,6 @@
 extern FILE *yyout;  // the output of flex
 
 extern T_prog program_ast;  // the output of bison
-
 int main(int argc, char **argv) {
   /* while (1) { */
   /*   yylex(); */
@@ -22,7 +21,9 @@ int main(int argc, char **argv) {
 
   // kick off the parser, which will store the result in program_ast
   yyparse();
+  // print the ast
 	check_prog(program_ast);
+
   // print the ast
   print_prog(program_ast, 0);
 }

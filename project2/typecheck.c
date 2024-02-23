@@ -71,8 +71,9 @@ static void check_decl(T_decl decl) {
     	fprintf(stderr, "FATAL: unexpected NULL in check_decl\n");
     	exit(1);
   	}
-  	if (lookup_in_all_scopes(current_scope, decl->ident) != NULL)
+  	if (lookup(current_scope->table, decl->ident) != NULL)
   		type_error("symbol is already bound in the current scope");
+    insert(current_scope->table, decl->ident, &decl->type);  
 }
 
 static void check_funclist(T_funclist funclist) {
@@ -83,27 +84,28 @@ static void check_funclist(T_funclist funclist) {
 }
 
 static void check_func(T_func func) {
+  	if(func->type->kind != E_functiontype)
+    	type_error("function is NOT declared with a function type");
 	T_type type = lookup_in_all_scopes(current_scope, func->ident);
   	if (type != NULL)
   		type_error("function is already defined in the current scope");
-  	if(!compare_types(func->type, type))
-    	type_error("function is NOT declared with a function type");
     insert(current_scope->table, func->ident, &func);  
   	// create a new scope
-  	current_scope = create_scope(current_scope);  
-    insert(current_scope->table, func->ident, &func);  
+  	current_scope = create_scope(current_scope); 
+    insert(current_scope->table, func->paramlist->ident, &func->paramlist); 
     check_stmtlist(func->stmtlist);
     check_expr(func->returnexpr);
     if(!compare_types(func->type, func->returnexpr->type))
     	type_error("function returns different type from type definition");    	
 	// restore the parent symbol table
 	T_scope parent_scope = current_scope->parent;
-	destroy_scope(current_scope); current_scope = parent_scope;
+	destroy_scope(current_scope);
+	
+	current_scope = parent_scope;
 }
 
 // GIVEN
 static void check_main(T_main main) {
-  fprintf(stderr, "check_main");
   // create a new scope
   current_scope = create_scope(current_scope);
   // add argc and argv with their C runtime types
@@ -121,7 +123,8 @@ static void check_main(T_main main) {
   }
   // restore the parent symbol table
   T_scope parent_scope = current_scope->parent;
-  destroy_scope(current_scope); current_scope = parent_scope;
+  destroy_scope(current_scope);
+  current_scope = parent_scope;
 }
 
 /* statements */
@@ -155,7 +158,6 @@ static void check_assignstmt(T_stmt stmt) {
   // check that the left-hand-side is an l-value, i.e., an identexpr or a deref unary expression
   switch (stmt->assignstmt.left->kind) {
   case E_identexpr:
-    // okay
     break;
   case E_unaryexpr:
     switch (stmt->assignstmt.left->unaryexpr.op) {
@@ -208,7 +210,7 @@ static void check_whilestmt(T_stmt stmt) {
 
 static void check_compoundstmt(T_stmt stmt) {
   	current_scope = create_scope(current_scope);
-  	check_stmt(stmt->whilestmt.body);
+  	check_stmt(stmt->compoundstmt.stmtlist->stmt);
 	T_scope parent_scope = current_scope->parent;
 	destroy_scope(current_scope); current_scope = parent_scope;
 }
@@ -237,11 +239,10 @@ static void check_identexpr(T_expr expr) {
   	T_type type = lookup_in_all_scopes(current_scope, expr->identexpr);
   	if(NULL == type)
   		type_error("symbol has not been declared in scope");
-  	expr->type = type;
+  	expr->type = expr->identexpr;
 }
-
 static void check_callexpr(T_expr expr) {
- 	T_type type = lookup_in_all_scopes(current_scope, expr->identexpr);
+ 	T_type type = lookup_in_all_scopes(current_scope, expr->callexpr.ident);
   	if(NULL == type)
   		type_error("call to undeclared function type");
   	if(!compare_types(type, expr->type))
@@ -267,10 +268,12 @@ static void check_arrayexpr(T_expr expr) {
   		type_error("call to undeclared identifier");
   	if(!compare_types(type, expr->type))
   		type_error("dereferencing object not array and not pointer");
+  	expr->type = type;
 }
 
 static void check_unaryexpr(T_expr expr) {
   	check_expr(expr->unaryexpr.expr);
+  	expr->type = expr->unaryexpr.expr->type;
   	switch(expr->unaryexpr.op)
   	{
   		case E_op_deref:
@@ -288,17 +291,17 @@ static void check_unaryexpr(T_expr expr) {
 }
 
 static void check_binaryexpr(T_expr expr) {
-  	check_expr(expr->binaryexpr.left);
   	check_expr(expr->binaryexpr.right);
+  	check_expr(expr->binaryexpr.left);
   	switch(expr->binaryexpr.op)
   	{
   		case E_op_times:
 		case E_op_divide:
 		case E_op_mod:
-		case E_op_plus:
 		case E_op_minus:
+		case E_op_plus:
 			if(!compare_types(expr->binaryexpr.left->type, expr->binaryexpr.right->type))
-				type_error("operands have conflicting types");
+				type_error("binary > operands have conflicting types");
 			expr->type = expr->binaryexpr.left->type;
 			break;
 		case E_op_lt:
@@ -308,24 +311,24 @@ static void check_binaryexpr(T_expr expr) {
 		case E_op_eq:
 		case E_op_ne:
 			if(!compare_types(expr->binaryexpr.left->type, expr->binaryexpr.right->type))
-				type_error("operands have conflicting types");
+				type_error("binary >> operands have conflicting types");
 			expr->type = INTTYPE;
 			break;
 		case E_op_and:
 		case E_op_or:
 			if(!compare_types(expr->binaryexpr.left->type, INTTYPE))
-				type_error("left operant has a non-supported type");
+				type_error("binary >>> left operant has a non-supported type");
 			if(!compare_types(expr->binaryexpr.right->type, INTTYPE))
-				type_error("right operant has a non-supported type");
+				type_error("binary >>>> right operant has a non-supported type");
 			expr->type = INTTYPE;
 			break;
 	}
 }
 
-static void check_castexpr(T_expr expr) {
-	T_type type = lookup_in_all_scopes(current_scope, expr->identexpr);
-  	if(NULL == type)
-  		type_error("can't cast to undeclared type");
+static void check_castexpr(T_expr expr) {	
+  	if(NULL == expr->castexpr.type)
+  		type_error("no function type for cast expression");
+  	expr->type = expr->castexpr.type;
 }
 
 /* type error */
@@ -333,12 +336,11 @@ static void type_error(char *msg) {
   fprintf(stderr, "%s\n", msg);
   exit(3);
 }
-
 /* type comparison */
 bool compare_types(T_type type1, T_type type2) {
   if (NULL == type1 || NULL == type2) {
     fprintf(stderr, "FATAL: unexpected NULL values in compare_types\n");
-    exit(1);
+   	exit(1);
   }
   if (type1->kind == type2->kind) {
     switch (type1->kind) {
@@ -383,3 +385,4 @@ bool compare_types(T_type type1, T_type type2) {
     return false;
   }
 }
+

@@ -1464,7 +1464,7 @@ yyreduce:
 
   case 14:
 #line 131 "parser.y" /* yacc.c:1646  */
-    { (yyval.exprlist) = (yyvsp[0].expr); }
+    { (yyval.exprlist) = create_exprlist((yyvsp[0].expr), NULL); }
 #line 1469 "parser.tab.c" /* yacc.c:1646  */
     break;
 
@@ -1500,7 +1500,7 @@ yyreduce:
 
   case 20:
 #line 143 "parser.y" /* yacc.c:1646  */
-    { (yyval.op) = E_op_times; }
+    { (yyval.op) = E_op_deref; }
 #line 1505 "parser.tab.c" /* yacc.c:1646  */
     break;
 
@@ -1716,7 +1716,7 @@ yyreduce:
 
   case 56:
 #line 218 "parser.y" /* yacc.c:1646  */
-    { (yyval.typelist) = (yyvsp[0].type); }
+    { (yyval.typelist) = create_typelist((yyvsp[0].type), NULL); }
 #line 1721 "parser.tab.c" /* yacc.c:1646  */
     break;
 
@@ -1758,7 +1758,7 @@ yyreduce:
 
   case 63:
 #line 241 "parser.y" /* yacc.c:1646  */
-    { (yyval.paramlist) = (yyvsp[0].strval); }
+    { (yyval.paramlist) = create_paramlist((yyvsp[0].strval), NULL); }
 #line 1763 "parser.tab.c" /* yacc.c:1646  */
     break;
 

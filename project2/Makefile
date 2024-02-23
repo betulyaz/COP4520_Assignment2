@@ -1,13 +1,12 @@
 SRC := \
 	lexer.c \
 	parser.tab.c \
-  	typecheck.c \
-  	table.c \
+	typecheck.c \
+	table.c \
 	ast.c \
 	ast_printer.c \
 	util.c \
 	main.c
-	
 
 OBJ := $(SRC:%.c=%.o)
 
